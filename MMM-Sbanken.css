@@ -1,0 +1,4 @@
+.sbanken-account-container {
+  display: flex;
+  justify-content: space-between;
+}
