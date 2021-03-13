@@ -10,7 +10,7 @@ module.exports = node_helper.create({
         if (notification === "GET_TOKEN") {
             const url = payload.config.urlIdentityServer;
             let returnData;
-            let data = {gg
+            let data = {
                 'client_id': payload.config.clientId,
                 'client_secret': payload.config.clientSecret,
                 'grant_type': 'client_credentials'
