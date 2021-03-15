@@ -37,7 +37,7 @@ and insert your own info.
         customerId: 'yourCustomerId', // your birth number
         // Whitcdelist account numbers
         displayOnlyAccounts: [9722XXXXXXX, 9802XXXXXXX],
-        aliasForAccountLabels: {9802XXXXXXX:'VISA-kids', 9722XXXXXXX: 'Food account'},
+        aliasForAccountLabels: {9802XXXXXXX: 'VISA-kids', 9722XXXXXXX: 'Food account'},
         // Summation of accounts
         sumAccountsLabel: 'Card buffer',
         sumAccounts: [9713XXXXXXX, 9729XXXXXXX],
@@ -57,6 +57,7 @@ where you set aside all of the money you have spent on the credit card to avoid 
 | `minWidth` | Minimum width on container in pixels. Default: 250 |
 | `numberOfDecimals` | Number of decimals to be displayed on numbers. Default: 2 |
 | `displayOnlyAccounts` | Whitelist account numbers to show the balance |
+| `aliasForAccountLabels` | Alias for account names. Example: {9802XXXXXXX: 'VISA-kids', 9722XXXXXXX: 'Food account'} |
 | `sumAccountsLabel` | Label for summation of accounts |
 | `sumAccounts` | The bank accounts to be summed |
 | `payDay` | What date you normally get paid from work. Default: 15 |
@@ -65,7 +66,9 @@ where you set aside all of the money you have spent on the credit card to avoid 
 | `showTransactionsToday` | View all transactions today. Default: true |
 | `showOnlyExpensesInTransactions` | Show only expenses and not income. Default: true |
 | `todayTransactionsHeader` | Header for today's transactions . Default: 'Dagens utgifter:' |
-| `noTransactionsLabel` | If no transactions on this day, this text will be displayed. Default: '&#128077; Ingen utgifter i dag' |
+| `noTransactionsLabel` | If no transactions on this day, this text will be displayed. Default: 'Ingen utgifter i dag' |
+| `salaryAccounts` | Add accounts where you get paid. This will check for payments larger than salaryNotificationMinimumAmount and print "Salary received" and with associated alias for account. Example: [9710XXXXXXX, 9722XXXXXXX] |
+| `salaryNotificationMinimumAmount` | Add a minimum amount that can be considered as salary. Default: 10000 |
 | `updateInterval` | Interval to update info, in milliseconds. Default: 1 hour |
 
 

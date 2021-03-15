@@ -22,15 +22,18 @@ Module.register("MMM-Sbanken", {
         urlApiBase: 'https://api.sbanken.no/exec.bank/api/v1/',
         header: 'Bankinfo',
         displayOnlyAccounts: [],
+        aliasForAccountLabels: [],
         sumAccountsLabel: 'Sum',
         sumAccounts: [],
+        salaryAccounts: [],
+        salaryNotificationMinimumAmount: 10000,
         minWidth: 250,
         numberOfDecimals: 2,
         showFutureAccountBalance: true,
         showTransactionsToday: true,
         showOnlyExpensesInTransactions: true,
         todayTransactionsHeader: 'Dagens utgifter:',
-        noTransactionsLabel: '&#128077; Ingen utgifter i dag',
+        noTransactionsLabel: 'Ingen utgifter i dag',
         payDay: 15,
         payDayBufferDays: 4,
         updateInterval: 60 * 60 * 1000 // 1 hour
@@ -42,6 +45,8 @@ Module.register("MMM-Sbanken", {
         this.transactions = [];
         this.tokenInfo = {};
         this.loaded = false;
+        this.salaryReceived = false;
+        this.salaryReceivedOnAccounts = [];
         this.getToken();
         this.scheduleUpdate();
     },
@@ -94,6 +99,18 @@ Module.register("MMM-Sbanken", {
         }, nextLoad);
     },
 
+    setSalaryReceived: function(account) {
+        this.salaryReceived = true;
+        let labelAlias = this.config.aliasForAccountLabels;
+        label = labelAlias[account] ? labelAlias[account] : account;
+        this.salaryReceivedOnAccounts.push(label);
+    },
+
+    displaySalary: function(content) {
+        content.appendChild(this.getInfoLine('&#10003; ' + this.translate("salaryReceived") +
+            ' (' + this.salaryReceivedOnAccounts.join(', ') + ')'));
+    },
+
     socketNotificationReceived: function(notification, payload) {
         if (notification === "TOKEN") {
             this.tokenInfo = payload;
@@ -121,65 +138,47 @@ Module.register("MMM-Sbanken", {
         };
     },
 
-    getDom: function() {
-        let contentWrapper = document.createElement("div");
+    getAccountLine: function(label, sum) {
+        let accountContainer = document.createElement("div");
+        accountContainer.className = 'sbanken-account-container';
+        let labelContainer = document.createElement("div");
+        labelContainer.className = 'dimmed light small';
+        labelContainer.innerHTML = label;
+        let balanceContainer = document.createElement("div");
+        balanceContainer.className = 'light small';
+        balanceContainer.innerHTML = sum;
+        accountContainer.appendChild(labelContainer);
+        accountContainer.appendChild(balanceContainer);
+        return accountContainer;
+    },
 
-        if (this.loaded === false) {
-            contentWrapper.innerHTML = this.translate("loading") + '...';
-            contentWrapper.className = "dimmed light small";
-            return contentWrapper;
-        }
+    getInfoLine: function(text) {
+        let infoContainer = document.createElement("div");
+        infoContainer.className = 'dimmed light small';
+        infoContainer.innerHTML = text;
+        return infoContainer;
+    },
 
-        if (this.config.header) {
-            let headerContainer = document.createElement('div');
-            headerContainer.innerHTML = this.config.header;
-            headerContainer.className = 'dimmed light';
-            contentWrapper.appendChild(headerContainer);
-        }
+    displayHeader: function(content) {
+        let headerContainer = document.createElement('div');
+        headerContainer.innerHTML = this.config.header;
+        headerContainer.className = 'dimmed light';
+        content.appendChild(headerContainer);
+    },
 
-        let getAccountLine = function(label, sum) {
-            let accountContainer = document.createElement("div");
-            accountContainer.className = 'sbanken-account-container';
-            let labelContainer = document.createElement("div");
-            labelContainer.className = 'dimmed light small';
-            labelContainer.innerHTML = label;
-            let balanceContainer = document.createElement("div");
-            balanceContainer.className = 'light small';
-            balanceContainer.innerHTML = sum;
-            accountContainer.appendChild(labelContainer);
-            accountContainer.appendChild(balanceContainer);
-            return accountContainer;
-        };
-
-        let getInfoLine = function(text) {
-            let infoContainer = document.createElement("div");
-            infoContainer.className = 'dimmed light small';
-            infoContainer.innerHTML = text;
-            return infoContainer;
-        };
-
-        if (this.config.minWidth) {
-            contentWrapper.style.minWidth = this.config.minWidth + 'px';
-        }
-
+    displayAndSumAccounts: function(content) {
         let aryShowAccounts = this.config.displayOnlyAccounts;
-        let labelAlias = this.config.aliasForAccountLabels;
         let blnDisplayAllAccounts = !aryShowAccounts;
         let aryAccountsToDiff = this.config.sumAccounts;
         let blnUseAccountBuffer = aryAccountsToDiff;
-        let diffSum = 0;
+        let labelAlias = this.config.aliasForAccountLabels;
         let numberOfDecimals = this.config.numberOfDecimals;
-        let accountNumber, label;
+        let diffSum = 0;
+        let self = this;
+        let accountNumber;
+        let arySalaryAccounts = this.config.salaryAccounts;
+        let blnSalaryCheck = arySalaryAccounts;
 
-        if(this.bankAccounts.error) {
-            let errorDescription = 'An error occured ('+this.bankAccounts.responseCode+')';
-            if (this.bankAccounts.responseCode === 429) {
-                errorDescription = 'Too many requests'
-            }
-            contentWrapper.appendChild(getInfoLine(errorDescription + '. Retry in 20 seconds'));
-            setTimeout(() => {this.getToken();}, 20000);
-            return contentWrapper;
-        }
         this.bankAccounts.items.forEach (function(account) {
             accountNumber = parseInt(account.accountNumber);
             if (blnUseAccountBuffer && aryAccountsToDiff.includes(accountNumber)) {
@@ -192,87 +191,145 @@ Module.register("MMM-Sbanken", {
 
             if (blnDisplayAllAccounts || aryShowAccounts.includes(accountNumber)) {
                 label = labelAlias[accountNumber] ? labelAlias[accountNumber] : account.name;
-                contentWrapper.appendChild(getAccountLine(label, account.balance.toFixed(numberOfDecimals)));
+                content.appendChild(self.getAccountLine(label, account.balance.toFixed(numberOfDecimals)));
+            }
+
+            if (blnSalaryCheck &&
+                arySalaryAccounts.includes(accountNumber) &&
+                account.balance > self.config.salaryNotificationMinimumAmount) {
+                self.setSalaryReceived(accountNumber);
+            }
+        });
+        return diffSum;
+    },
+
+    displayFutureAccountBalance: function(content) {
+        // Refill to account will be done after payDay + payDayBufferDays
+        let payDayThisMonth = new Date();
+        payDayThisMonth.setDate((this.config.payDay + this.config.payDayBufferDays));
+        payDayThisMonth = moment(payDayThisMonth);
+
+        content.appendChild(document.createElement("hr"));
+        let paymentInfo = this.payments;
+        const needsRefillText = this.translate("needsRefill");
+
+        let blnAllAccountsInBalance = true;
+        this.bankAccounts.items.forEach (function(account) {
+            if (account.accountType !== 'Creditcard account') {
+                accountNumber = parseInt(account.accountNumber);
+                paymentInfo[accountNumber].items.forEach (function(payment) {
+                    if(payDayThisMonth > moment(payment.dueDate)) {
+                        account.balance -= payment.amount;
+                    }
+
+                });
+                if (account.balance <= 0) {
+                    blnAllAccountsInBalance = false;
+                    content.appendChild(this.getAccountLine(needsRefillText, account.name));
+                }
             }
         });
 
-        if (diffSum) {
-            contentWrapper.appendChild(document.createElement("hr"));
-            contentWrapper.appendChild(getAccountLine(this.config.sumAccountsLabel, diffSum.toFixed(numberOfDecimals)));
+        if (blnAllAccountsInBalance) {
+            content.appendChild(this.getInfoLine('&#10003; ' + this.translate("allAccountsAreInBalance")));
         }
+    },
 
+    displayTransactions: function(content) {
+        let transactions = this.transactions;
+        let noExpenses = true;
+        let showOnlyExpensesInTransactions = this.config.showOnlyExpensesInTransactions;
+        let accountNumber, label;
+        let transactionLines = [];
+        let self = this;
         moment.locale();
 
-        if (this.config.showFutureAccountBalance) {
-            // Refill to account will be done after payDay + payDayBufferDays
-            let payDayThisMonth = new Date();
-            payDayThisMonth.setDate((this.config.payDay + this.config.payDayBufferDays));
-            payDayThisMonth = moment(payDayThisMonth);
-
-            contentWrapper.appendChild(document.createElement("hr"));
-            let paymentInfo = this.payments;
-            const needsRefillText = this.translate("needsRefill");
-
-            let blnAllAccountsInBalance = true;
-            this.bankAccounts.items.forEach (function(account) {
-                if (account.accountType !== 'Creditcard account') {
-                    accountNumber = parseInt(account.accountNumber);
-                    paymentInfo[accountNumber].items.forEach (function(payment) {
-                        if(payDayThisMonth > moment(payment.dueDate)) {
-                            account.balance -= payment.amount;
+        this.bankAccounts.items.forEach (function(account) {
+            accountNumber = parseInt(account.accountNumber);
+            let today = moment().startOf('day');
+            if (transactions[accountNumber] && transactions[accountNumber].items) {
+                transactions[accountNumber].items.forEach (function(transaction) {
+                    // accountingDate vs interestDate
+                    if (moment(transaction.interestDate).isSame(moment(today))) {
+                        let label = transaction.text.toLowerCase();
+                        label = label.replace(/ nok | kurs|\d|\*|:|\./g, '').trim();
+                        label = label.charAt(0).toUpperCase() + label.slice(1);
+                        if (transaction.transactionType === 'Avtalegiro') {
+                            label += ' (' + account.name + ')';
                         }
-
-                    });
-                    if (account.balance <= 0) {
-                        blnAllAccountsInBalance = false;
-                        contentWrapper.appendChild(getAccountLine(needsRefillText, account.name));
+                        if (showOnlyExpensesInTransactions) {
+                            if(transaction.amount < 0) {
+                                noExpenses = false;
+                                transactionLines.push(self.getAccountLine(label, transaction.amount));
+                            }
+                        } else {
+                            noExpenses = false;
+                            transactionLines.push(self.getAccountLine(label, transaction.amount));
+                        }
                     }
-                }
-            });
-
-            if (blnAllAccountsInBalance) {
-                contentWrapper.appendChild(getInfoLine('&#10003; ' + this.translate("allAccountsAreInBalance")));
+                });
             }
+
+        });
+        if (noExpenses) {
+            content.appendChild(this.getInfoLine('&#10003; ' + this.config.noTransactionsLabel));
+        } else {
+            content.appendChild(document.createElement("hr"));
+            if (this.config.todayTransactionsHeader) {
+                content.appendChild(this.getInfoLine(this.config.todayTransactionsHeader));
+            }
+            transactionLines.forEach(function(transaction) {
+                content.appendChild(transaction);
+            });
+        }
+    },
+
+    getDom: function() {
+        let contentWrapper = document.createElement("div");
+        let self = this;
+
+        if (this.loaded === false) {
+            contentWrapper.innerHTML = this.translate("loading") + '...';
+            contentWrapper.className = "dimmed light small";
+            return contentWrapper;
+        }
+
+        if (this.config.header) {
+            this.displayHeader(contentWrapper);
+        }
+
+        if (this.config.minWidth) {
+            contentWrapper.style.minWidth = this.config.minWidth + 'px';
+        }
+
+        let numberOfDecimals = this.config.numberOfDecimals;
+
+        if(this.bankAccounts.error) {
+            let errorDescription = 'An error occured ('+this.bankAccounts.responseCode+')';
+            if (this.bankAccounts.responseCode === 429) {
+                errorDescription = 'Too many requests'
+            }
+            contentWrapper.appendChild(self.getInfoLine(errorDescription + '. Retry in 20 seconds'));
+            setTimeout(() => {this.getToken();}, 20000);
+            return contentWrapper;
+        }
+        let diffSum = self.displayAndSumAccounts(contentWrapper);
+        if (diffSum) {
+            contentWrapper.appendChild(document.createElement("hr"));
+            contentWrapper.appendChild(self.getAccountLine(this.config.sumAccountsLabel,
+                diffSum.toFixed(numberOfDecimals)));
+        }
+
+        if (this.config.showFutureAccountBalance) {
+            this.displayFutureAccountBalance(contentWrapper);
+        }
+
+        if (this.salaryReceived) {
+            this.displaySalary(contentWrapper);
         }
 
         if (this.config.showTransactionsToday) {
-            contentWrapper.appendChild(document.createElement("hr"));
-            if (this.config.todayTransactionsHeader) {
-                contentWrapper.appendChild(getInfoLine(this.config.todayTransactionsHeader));
-            }
-            let transactions = this.transactions;
-            let noExpenses = true;
-            let showOnlyExpensesInTransactions = this.config.showOnlyExpensesInTransactions;
-            this.bankAccounts.items.forEach (function(account) {
-                accountNumber = parseInt(account.accountNumber);
-                let today = moment().startOf('day');
-                if (transactions[accountNumber] && transactions[accountNumber].items) {
-                    transactions[accountNumber].items.forEach (function(transaction) {
-                        // accountingDate vs interestDate
-                        if (moment(transaction.interestDate).isSame(moment(today))) {
-                            let label = transaction.text.toLowerCase();
-                            label = label.replace(/ nok | kurs|\d|\*|:|\./g, '').trim();
-                            label = label.charAt(0).toUpperCase() + label.slice(1);
-                            if (transaction.transactionType === 'Avtalegiro') {
-                                label += ' (' + account.name + ')';
-                            }
-                            if (showOnlyExpensesInTransactions) {
-                                if(transaction.amount < 0) {
-                                    noExpenses = false;
-                                    contentWrapper.appendChild(getAccountLine(label, transaction.amount));
-                                }
-                            } else {
-                                noExpenses = false;
-                                contentWrapper.appendChild(getAccountLine(label, transaction.amount));
-                            }
-                        }
-                    });
-                }
-
-            });
-            if (noExpenses) {
-                contentWrapper.appendChild(getInfoLine(this.config.noTransactionsLabel));
-            }
+            this.displayTransactions(contentWrapper);
         }
 
         return contentWrapper;
