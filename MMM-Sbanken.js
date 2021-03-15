@@ -178,6 +178,7 @@ Module.register("MMM-Sbanken", {
         let accountNumber;
         let arySalaryAccounts = this.config.salaryAccounts;
         let blnSalaryCheck = arySalaryAccounts;
+        this.salaryReceivedOnAccounts = [];
 
         this.bankAccounts.items.forEach (function(account) {
             accountNumber = parseInt(account.accountNumber);
