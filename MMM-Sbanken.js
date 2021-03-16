@@ -49,6 +49,7 @@ Module.register("MMM-Sbanken", {
         this.salaryReceivedOnAccounts = [];
         this.getToken();
         this.scheduleUpdate();
+        moment.locale();
     },
 
     getScripts: function() {
@@ -176,9 +177,6 @@ Module.register("MMM-Sbanken", {
         let diffSum = 0;
         let self = this;
         let accountNumber;
-        let arySalaryAccounts = this.config.salaryAccounts;
-        let blnSalaryCheck = arySalaryAccounts;
-        this.salaryReceivedOnAccounts = [];
 
         this.bankAccounts.items.forEach (function(account) {
             accountNumber = parseInt(account.accountNumber);
@@ -193,12 +191,6 @@ Module.register("MMM-Sbanken", {
             if (blnDisplayAllAccounts || aryShowAccounts.includes(accountNumber)) {
                 label = labelAlias[accountNumber] ? labelAlias[accountNumber] : account.name;
                 content.appendChild(self.getAccountLine(label, account.balance.toFixed(numberOfDecimals)));
-            }
-
-            if (blnSalaryCheck &&
-                arySalaryAccounts.includes(accountNumber) &&
-                account.balance > self.config.salaryNotificationMinimumAmount) {
-                self.setSalaryReceived(accountNumber);
             }
         });
         return diffSum;
@@ -236,18 +228,20 @@ Module.register("MMM-Sbanken", {
         }
     },
 
-    displayTransactions: function(content) {
+    displaySalaryAndTransactions: function(content) {
         let transactions = this.transactions;
         let noExpenses = true;
         let showOnlyExpensesInTransactions = this.config.showOnlyExpensesInTransactions;
         let accountNumber, label;
         let transactionLines = [];
         let self = this;
-        moment.locale();
+        let today = moment().startOf('day');
+        let arySalaryAccounts = this.config.salaryAccounts;
+        let blnSalaryCheck = arySalaryAccounts;
+        this.salaryReceivedOnAccounts = [];
 
         this.bankAccounts.items.forEach (function(account) {
             accountNumber = parseInt(account.accountNumber);
-            let today = moment().startOf('day');
             if (transactions[accountNumber] && transactions[accountNumber].items) {
                 transactions[accountNumber].items.forEach (function(transaction) {
                     // accountingDate vs interestDate
@@ -267,21 +261,34 @@ Module.register("MMM-Sbanken", {
                             noExpenses = false;
                             transactionLines.push(self.getAccountLine(label, transaction.amount));
                         }
+
+                        if (blnSalaryCheck &&
+                            arySalaryAccounts.includes(accountNumber) &&
+                            transaction.amount > self.config.salaryNotificationMinimumAmount) {
+                            self.setSalaryReceived(accountNumber);
+                        }
+
                     }
                 });
             }
-
         });
-        if (noExpenses) {
-            content.appendChild(this.getInfoLine('&#10003; ' + this.config.noTransactionsLabel));
-        } else {
-            content.appendChild(document.createElement("hr"));
-            if (this.config.todayTransactionsHeader) {
-                content.appendChild(this.getInfoLine(this.config.todayTransactionsHeader));
+
+        if (this.salaryReceived) {
+            this.displaySalary(content);
+        }
+
+        if (this.config.showTransactionsToday) {
+            if (noExpenses) {
+                content.appendChild(this.getInfoLine('&#10003; ' + this.config.noTransactionsLabel));
+            } else {
+                content.appendChild(document.createElement("hr"));
+                if (this.config.todayTransactionsHeader) {
+                    content.appendChild(this.getInfoLine(this.config.todayTransactionsHeader));
+                }
+                transactionLines.forEach(function(transaction) {
+                    content.appendChild(transaction);
+                });
             }
-            transactionLines.forEach(function(transaction) {
-                content.appendChild(transaction);
-            });
         }
     },
 
@@ -325,13 +332,7 @@ Module.register("MMM-Sbanken", {
             this.displayFutureAccountBalance(contentWrapper);
         }
 
-        if (this.salaryReceived) {
-            this.displaySalary(contentWrapper);
-        }
-
-        if (this.config.showTransactionsToday) {
-            this.displayTransactions(contentWrapper);
-        }
+        this.displaySalaryAndTransactions(contentWrapper);
 
         return contentWrapper;
     }
