@@ -245,7 +245,7 @@ Module.register("MMM-Sbanken", {
             if (transactions[accountNumber] && transactions[accountNumber].items) {
                 transactions[accountNumber].items.forEach (function(transaction) {
                     // accountingDate vs interestDate
-                    if (moment(transaction.interestDate).isSame(moment(today))) {
+                    if (moment(transaction.interestDate).isSame(moment(today)) && transaction.source !== 'Archive') {
                         let label = transaction.text.toLowerCase();
                         label = label.replace(/ nok | kurs|\d|\*|:|\./g, '').trim();
                         label = label.charAt(0).toUpperCase() + label.slice(1);
