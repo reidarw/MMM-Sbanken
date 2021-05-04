@@ -207,6 +207,7 @@ Module.register("MMM-Sbanken", {
         const needsRefillText = this.translate("needsRefill");
 
         let blnAllAccountsInBalance = true;
+        let self = this;
         this.bankAccounts.items.forEach (function(account) {
             if (account.accountType !== 'Creditcard account') {
                 accountNumber = parseInt(account.accountNumber);
@@ -218,7 +219,7 @@ Module.register("MMM-Sbanken", {
                 });
                 if (account.balance <= 0) {
                     blnAllAccountsInBalance = false;
-                    content.appendChild(this.getAccountLine(needsRefillText, account.name));
+                    content.appendChild(self.getAccountLine(needsRefillText, account.name));
                 }
             }
         });
