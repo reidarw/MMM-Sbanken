@@ -12,7 +12,7 @@ module.exports = node_helper.create({
             let returnData;
             let data = {
                 'client_id': payload.config.clientId,
-                'client_secret': payload.config.clientSecret,
+                'client_secret': encodeURI(payload.config.clientSecret),
                 'grant_type': 'client_credentials'
             };
             request({
@@ -33,7 +33,6 @@ module.exports = node_helper.create({
             let returnData;
             let headers = {
                 'Authorization': 'Bearer ' + payload.token.access_token,
-                'customerId': payload.config.customerId,
             };
             request({
                 method: 'GET',
@@ -63,7 +62,6 @@ module.exports = node_helper.create({
                         let url = payload.config.urlApiBase + 'Payments/' + accountId;
                         let headers = {
                             'Authorization': 'Bearer ' + payload.token.access_token,
-                            'customerId': payload.config.customerId,
                         };
                         request({
                             method: 'GET',
@@ -110,7 +108,6 @@ module.exports = node_helper.create({
                         let url = payload.config.urlApiBase + 'Transactions/' + accountId;
                         let headers = {
                             'Authorization': 'Bearer ' + payload.token.access_token,
-                            'customerId': payload.config.customerId,
                         };
                         request({
                             method: 'GET',

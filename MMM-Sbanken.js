@@ -17,9 +17,9 @@
 
 Module.register("MMM-Sbanken", {
     defaults: {
-        // clientId, customerId (your social security number) and password must be set in the config
+        // clientId and password must be set in the config
         urlIdentityServer: 'https://auth.sbanken.no/identityserver/connect/token',
-        urlApiBase: 'https://api.sbanken.no/exec.bank/api/v1/',
+        urlApiBase: 'https://publicapi.sbanken.no/apibeta/api/v1/',
         header: 'Bankinfo',
         displayOnlyAccounts: [],
         aliasForAccountLabels: [],

@@ -11,6 +11,7 @@ Magic Mirror module for displaying transactions and account balance from Sbanken
      * You have to sign up for access via https://utvikler.sbanken.no
      * You have to enable "Beta" in your personal settings
      * Finally, you need to complete the API Beta setup wizard.
+     * From may 2021 you also have to "Grants access to perform operations on APIBeta APIs (aka. developer portal)"
 
 ## Installation
 
@@ -34,7 +35,6 @@ and insert your own info.
     config: {
         clientId: 'yourClientId',
         clientSecret: 'yourClientSecret',
-        customerId: 'yourCustomerId', // your birth number
         // Whitcdelist account numbers
         displayOnlyAccounts: [9722XXXXXXX, 9802XXXXXXX],
         aliasForAccountLabels: {9802XXXXXXX: 'VISA-kids', 9722XXXXXXX: 'Food account'},
