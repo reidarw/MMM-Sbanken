@@ -209,14 +209,17 @@ Module.register("MMM-Sbanken", {
         let blnAllAccountsInBalance = true;
         let self = this;
         this.bankAccounts.items.forEach (function(account) {
-            if (account.accountType !== 'Creditcard account') {
+            // Skip  credit card account and bank loans
+            if (account.creditLimit === 0) {
                 accountNumber = parseInt(account.accountNumber);
-                paymentInfo[accountNumber].items.forEach (function(payment) {
-                    if(payDayThisMonth > moment(payment.dueDate)) {
-                        account.balance -= payment.amount;
-                    }
+                if (paymentInfo[accountNumber].items) {
+                    paymentInfo[accountNumber].items.forEach (function(payment) {
+                        if(payDayThisMonth > moment(payment.dueDate)) {
+                            account.balance -= payment.amount;
+                        }
 
-                });
+                    });
+                }
                 if (account.balance <= 0) {
                     blnAllAccountsInBalance = false;
                     content.appendChild(self.getAccountLine(needsRefillText, account.name));
