@@ -1,6 +1,9 @@
 # MMM-Sbanken
 Magic Mirror module for displaying transactions and account balance from Sbanken (Norway's first  online bank)
 
+> [!CAUTION]
+>  **Sbanken is shutting down the API on March 22nd 2024!**
+
 ## Dependencies
   * A [MagicMirror<sup>2</sup>](https://github.com/MichMich/MagicMirror) installation
   * API from Sbanken:
